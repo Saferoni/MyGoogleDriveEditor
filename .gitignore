@@ -114,3 +114,4 @@ fabric.properties
 app/libs/
 app/src/androidTest/
 app/src/test/
+/.idea/runConfigurations.xml
