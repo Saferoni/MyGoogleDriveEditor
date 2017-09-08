@@ -21,7 +21,7 @@
 
     <string name="action_settings">Settings</string>
     <string name="wrong_email_or_password">Fill in password and email.</string>
-    <string name="menu_getlist">getListMyFiles</string>
-    <string name="menu_createfile">CreateFileInMainFolder</string>
+    <string name="menu_get_list">getListFilesFromDrive</string>
+    <string name="menu_create_file">AddImageToGoogleDrive</string>
     <string name="menu_other">Other</string>
 </resources>

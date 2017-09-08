@@ -3,9 +3,13 @@
     package="com.safercript.mygoogledriveeditor">
 
     <!-- To auto-complete the email text field in the login form with the user's emails -->
-    <uses-permission android:name="android.permission.INTERNET" />gi
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
 
     <application
@@ -31,12 +35,20 @@
         <activity
             android:name=".activity.MyDriveActivity"
             android:label="@string/title_activity_my_drive"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
-        <activity android:name=".QueryFilesInFolderActivity" />
-        <activity android:name=".ListFilesActivity" />
-        <activity android:name=".QueryFilesSharedWithMeActivity" />
-        <activity android:name=".QueryFilesActivity" />
-        <activity android:name=".CreateFileActivity" />
+            android:theme="@style/AppTheme.NoActionBar">
+        </activity>
+
+        <!--File Provider to targetSdkVersion is 24 or higher -->
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="${applicationId}"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
+
     </application>
 
 </manifest>

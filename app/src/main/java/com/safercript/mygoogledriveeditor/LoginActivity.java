@@ -124,6 +124,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
         if (result.isSuccess()) {
             GoogleSignInAccount account = result.getSignInAccount();
             if (account != null) {
+
                 mLogin = account.getEmail();
                 authorizationSuccess();
             } else {

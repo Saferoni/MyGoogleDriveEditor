@@ -5,11 +5,11 @@
         <item
             android:id="@+id/query_files"
             android:icon="@drawable/ic_format_align_justify_black_24dp"
-            android:title="@string/menu_getlist" />
+            android:title="@string/menu_get_list" />
         <item
             android:id="@+id/createFile"
             android:icon="@drawable/ic_add_black_24dp"
-            android:title="@string/menu_createfile" />
+            android:title="@string/menu_create_file" />
     </group>
 
     <item android:title="@string/menu_other">

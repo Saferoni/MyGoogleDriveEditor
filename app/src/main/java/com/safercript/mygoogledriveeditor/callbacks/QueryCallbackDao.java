@@ -1,14 +1,19 @@
 package com.safercript.mygoogledriveeditor.callbacks;
 
-import com.google.android.gms.drive.DriveApi.MetadataBufferResult;
+import android.content.IntentSender;
+import android.graphics.Bitmap;
 
-/**
- * Created by pavelsafronov on 24.08.17.
- */
+import com.safercript.mygoogledriveeditor.entity.FileDataIdAndName;
+
+import java.util.List;
 
 public interface QueryCallbackDao {
 
-    void onGetFilesInMyDrive(MetadataBufferResult result);
+    void createResultImageFile(IntentSender intentSender);
+
+    void onResultFilesInMyDrive(List<FileDataIdAndName> listFiles);
+
+    void onResultGetFile(Bitmap bitmap);
 
     void failRequest(String messageError);
 

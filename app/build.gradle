@@ -33,6 +33,7 @@ dependencies {
     compile 'com.android.support:design:25.3.1'
     compile 'com.google.android.gms:play-services-drive:10.2.6'
     compile 'com.android.support.constraint:constraint-layout:1.0.0-beta4'
+    compile 'com.afollestad.material-dialogs:core:0.9.3.0'
 
     compile 'pub.devrel:easypermissions:0.3.0'
     compile('com.google.api-client:google-api-client-android:1.22.0') {

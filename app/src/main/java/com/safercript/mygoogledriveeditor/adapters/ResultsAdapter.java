@@ -17,17 +17,17 @@ package com.safercript.mygoogledriveeditor.adapters;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.android.gms.drive.Metadata;
-import com.google.android.gms.drive.widget.DataBufferAdapter;
 import com.safercript.mygoogledriveeditor.R;
+import com.safercript.mygoogledriveeditor.entity.FileDataIdAndName;
 
 /**
  * A DataBufferAdapter to display the results of file listing/querying requests.
  */
-public class ResultsAdapter extends DataBufferAdapter<Metadata> {
+public class ResultsAdapter extends ArrayAdapter<FileDataIdAndName> {
 
     private ResultsAdapter.OnClickListenerAdapter onClickListenerAdapter;
 
@@ -41,9 +41,9 @@ public class ResultsAdapter extends DataBufferAdapter<Metadata> {
             convertView = View.inflate(getContext(),
                     R.layout.file_list_item, null);
         }
-        Metadata metadata = getItem(position);
+        FileDataIdAndName metadata = getItem(position);
         TextView titleTextView = (TextView) convertView.findViewById(R.id.textView);
-        titleTextView.setText(metadata.getTitle());
+        titleTextView.setText(metadata.getNameFile() + "");
         titleTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -67,7 +67,7 @@ public class ResultsAdapter extends DataBufferAdapter<Metadata> {
     }
     // interface for connection with activity
     public interface OnClickListenerAdapter {
-        void onClick(Metadata metadata);
-        void onClickDelete(Metadata metadata);
+        void onClick(FileDataIdAndName metadata);
+        void onClickDelete(FileDataIdAndName metadata);
     }
 }
