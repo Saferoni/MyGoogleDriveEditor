@@ -9,12 +9,13 @@ import android.util.Log;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
 import com.google.android.gms.drive.Drive;
 import com.google.android.gms.drive.DriveApi.DriveContentsResult;
 import com.google.android.gms.drive.MetadataChangeSet;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -37,11 +38,9 @@ public class DriveRestDao {
 
     private QueryCallbackDao queryCallbackDao;
     private GoogleApiClient mGoogleApiClient;
-    private Context context;
-    private String user;
+    private com.google.api.services.drive.Drive driveService;
 
-    private static final String[] SCOPES_READ = {DriveScopes.DRIVE_METADATA_READONLY};
-    private static final String[] SCOPES_DRIVE = {DriveScopes.DRIVE_FILE};
+    private static final String[] SCOPES_DRIVE = {DriveScopes.DRIVE};
 
     private static DriveRestDao sInstance;
 
@@ -58,12 +57,27 @@ public class DriveRestDao {
     }
 
     public void initDriveRestDao(String user, Context context, GoogleApiClient mGoogleApiClient) {
-        this.user = user;
-        this.context = context;
         this.queryCallbackDao = (QueryCallbackDao) context;
         this.mGoogleApiClient = mGoogleApiClient;
+        initDriveService(user,context);
     }
 
+    private void initDriveService(String user, Context context){
+        GoogleAccountCredential mCredential = GoogleAccountCredential
+                .usingOAuth2(context, Arrays.asList(SCOPES_DRIVE))
+                .setBackOff(new ExponentialBackOff())
+                .setSelectedAccountName(user);
+
+        HttpTransport transport = AndroidHttp.newCompatibleTransport();
+        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+
+        driveService = new com.google.api.services.drive.Drive.Builder(
+                transport, jsonFactory, mCredential)
+                .setApplicationName("MyGoogleDriveEditor")
+                .build();
+    }
+
+    //----- Commands -----
 
     public void getFilesListInMyDrive(){
         new MakeListFilesMyDriveRequestTask().execute();
@@ -122,42 +136,10 @@ public class DriveRestDao {
         new RequestDeleteFileByIDAsyncTask().execute(fileId);
     }
 
-    public void signOut() {
-        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
-            mGoogleApiClient.clearDefaultAccountAndReconnect().setResultCallback(new ResultCallback<Status>() {
-
-                @Override
-                public void onResult(Status status) {
-
-                    mGoogleApiClient.disconnect();
-                    queryCallbackDao.signOut();
-                }
-            });
-        }
-//        Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-//                new ResultCallback<Status>() {
-//                    @Override
-//                    public void onResult(Status status) {
-//                        if (status.isSuccess()){
-//                            queryCallbackDao.signOut();
-//                        }
-//                    }
-//                });
-    }
-
-
+// ------ AsyncTasks commands ------
 
     private class MakeListFilesMyDriveRequestTask extends AsyncTask<Void, Void, List<FileDataIdAndName>> {
-        private com.google.api.services.drive.Drive mService = null;
         private Exception mLastError = null;
-
-        MakeListFilesMyDriveRequestTask() {
-            mService = initService(SCOPES_DRIVE);
-        }
-
-        @Override
-        protected void onPreExecute() {
-        }
 
         /**
          * Background task to call Drive API.
@@ -183,7 +165,7 @@ public class DriveRestDao {
         private List<FileDataIdAndName> getDataFromApi() throws IOException {
             // Get a list of up to 10 files.
             List<FileDataIdAndName> fileInfo = new ArrayList<>();
-            FileList result = mService.files().list()
+            FileList result = driveService.files().list()
                     .setPageSize(20)
                     .setFields("nextPageToken, files(id, name)")
                     .execute();
@@ -204,21 +186,21 @@ public class DriveRestDao {
                 queryCallbackDao.onResultFilesInMyDrive(output);
             }
         }
+
+        @Override
+        protected void onCancelled() {
+            onCanceledCheckLastError(mLastError);
+        }
     }
 
     private class RequestDeleteFileByIDAsyncTask extends AsyncTask<String , Void, Void> {
-        private com.google.api.services.drive.Drive mService = null;
         private Exception mLastError = null;
-
-        RequestDeleteFileByIDAsyncTask(){
-            mService = initService(SCOPES_DRIVE);
-        }
 
         @Override
         protected Void doInBackground(String... params) {
             final String driveIdStr = params[0];
             try {
-                mService.files().delete(driveIdStr).execute();
+                driveService.files().delete(driveIdStr).execute();
             }catch (IOException e) {
                 mLastError = e;
                 System.out.println("An error occurred: " + e);
@@ -234,16 +216,17 @@ public class DriveRestDao {
                 queryCallbackDao.success("File deleted.");
             }
         }
+
+        @Override
+        protected void onCancelled() {
+            onCanceledCheckLastError(mLastError);
+
+        }
     }
 
     private class RequestGetFileByIDAsyncTask extends AsyncTask<String , Void, Void> {
-        private com.google.api.services.drive.Drive mService = null;
         private Exception mLastError = null;
         Bitmap bitmap;
-
-        RequestGetFileByIDAsyncTask(){
-            mService = initService(SCOPES_DRIVE);
-        }
 
         @Override
         protected Void doInBackground(String... params) {
@@ -251,11 +234,12 @@ public class DriveRestDao {
 
             OutputStream outputStream = new ByteArrayOutputStream();
             try {
-                mService.files().get(fileIdStr)
+                driveService.files().get(fileIdStr)
                         .executeMediaAndDownloadTo(outputStream);
             }catch (IOException e) {
                 mLastError = e;
             }
+
             byte[] bitmapData = ((ByteArrayOutputStream) outputStream).toByteArray();
             bitmap = BitmapFactory.decodeByteArray(bitmapData, 0, bitmapData.length);
             return null;
@@ -269,23 +253,32 @@ public class DriveRestDao {
                 queryCallbackDao.onResultGetFile(bitmap);
             }
         }
+
+        @Override
+        protected void onCancelled() {
+            onCanceledCheckLastError(mLastError);
+        }
     }
 
-    private com.google.api.services.drive.Drive initService(String [] scopes){
-        com.google.api.services.drive.Drive mService = null;
-        GoogleAccountCredential mCredential = null;
+    private void onCanceledCheckLastError(Exception mLastError){
+        if (mLastError != null) {
+            if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
+                Log.e(LOG_TAG,"ERROR 1 GooglePlayServicesAvailabilityIOException");
+// showGooglePlayServicesAvailabilityErrorDialog(
+//                            ((GooglePlayServicesAvailabilityIOException) mLastError)
+//                                    .getConnectionStatusCode());
+            } else if (mLastError instanceof UserRecoverableAuthIOException) {
+                Log.e(LOG_TAG,"ERROR 2 UserRecoverableAuthIOException");
+                queryCallbackDao.errorPermission(mLastError);
 
-        mCredential = GoogleAccountCredential.usingOAuth2(
-                context, Arrays.asList(scopes))
-                .setBackOff(new ExponentialBackOff())
-                .setSelectedAccountName(user);
-
-        HttpTransport transport = AndroidHttp.newCompatibleTransport();
-        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-        mService = new com.google.api.services.drive.Drive.Builder(
-                transport, jsonFactory, mCredential)
-                .setApplicationName("MyGoogleDriveEditor")
-                .build();
-        return mService;
+            } else {
+                Log.e(LOG_TAG,"ERROR 3 Other Error");
+                queryCallbackDao.failRequest("The following error occurred:\n"
+                        + mLastError.getMessage());
+            }
+        } else {
+            Log.e(LOG_TAG,"ERROR 4 Request Canceled");
+            //mOutputText.setText("Request cancelled.");
+        }
     }
 }

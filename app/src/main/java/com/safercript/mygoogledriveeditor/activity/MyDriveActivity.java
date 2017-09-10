@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
@@ -11,6 +12,8 @@ import android.content.IntentSender.SendIntentException;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,6 +30,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -39,12 +43,19 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
 import com.safercript.mygoogledriveeditor.LoginActivity;
 import com.safercript.mygoogledriveeditor.R;
 import com.safercript.mygoogledriveeditor.adapters.ResultsAdapter;
 import com.safercript.mygoogledriveeditor.callbacks.QueryCallbackDao;
 import com.safercript.mygoogledriveeditor.dao.DriveRestDao;
 import com.safercript.mygoogledriveeditor.entity.FileDataIdAndName;
+import com.safercript.mygoogledriveeditor.views.DialogExitApp;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,14 +71,19 @@ public class MyDriveActivity extends BaseDriveActivity
 
     private static final String LOG_TAG = MyDriveActivity.class.getSimpleName();
 
-    private static final int REQUEST_CODE_CAPTURE_IMAGE = 1;
-    private static final int REQUEST_CODE_CREATOR = 2;
-    private static final int REQUEST_CODE_IMAGE_FROM_GALLERY = 3;
+    private static final int REQUEST_CODE_CREATOR = 101;
+    private static final int REQUEST_CODE_CAPTURE_IMAGE = 102;
+    private static final int REQUEST_CODE_IMAGE_FROM_GALLERY = 103;
+
+    private static final int REQUEST_GOOGLE_PLAY_SERVICES = 104;
+    private static final int REQUEST_CODE_PERMISSION = 105;
+    private static final int REQUEST_AUTHORIZATION = 106;
 
     private ProgressDialog mProgress;
     private ResultsAdapter mResultsAdapter;
 
     private DriveRestDao driveRestDao;
+
     String emailAccountName;
     String mCurrentPhotoPath;
 
@@ -89,6 +105,8 @@ public class MyDriveActivity extends BaseDriveActivity
         mResultsAdapter = new ResultsAdapter(this);
         mResultsListView.setAdapter(mResultsAdapter);
         setListeners();
+
+        initBackButton(relativeLayoutMain,this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -121,16 +139,32 @@ public class MyDriveActivity extends BaseDriveActivity
     private void setListeners() {
         mResultsAdapter.setOnClickListenerAdapter(new ResultsAdapter.OnClickListenerAdapter() {
             @Override
-            public void onClick(FileDataIdAndName metadata) {
-                Log.d(LOG_TAG, metadata.getId());
-                driveRestDao.getFileFromDriveById(metadata.getId());
+            public void onClick(FileDataIdAndName fileDataIdAndName) {
+                Log.d(LOG_TAG, fileDataIdAndName.getId());
+                driveRestDao.getFileFromDriveById(fileDataIdAndName.getId());
                 mProgress.show();
             }
 
             @Override
-            public void onClickDelete(FileDataIdAndName metadata) {
-                Log.d(LOG_TAG, metadata.getId());
-                driveRestDao.deleteFileById(metadata.getId());
+            public void onClickDelete(FileDataIdAndName fileDataIdAndName) {
+                Log.d(LOG_TAG, fileDataIdAndName.getId());
+                driveRestDao.deleteFileById(fileDataIdAndName.getId());
+                mProgress.show();
+            }
+        });
+    }
+
+    private void initBackButton(View view, final Activity activity) {
+        view.setFocusableInTouchMode(true);
+        view.requestFocus();
+        view.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN) {
+                    new DialogExitApp(activity).show();
+                    return true;
+                }
+                return false;
             }
         });
     }
@@ -183,11 +217,28 @@ public class MyDriveActivity extends BaseDriveActivity
         } else if (id == R.id.nav_share) {
             showMessage("Кнопка пока не назначина");
         } else if (id == R.id.nav_send) {
-            driveRestDao.signOut();
+            signOut();
         }
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    public void signOut() {
+        final GoogleApiClient mGoogleApiClient = getGoogleApiClient();
+        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+            getGoogleApiClient().clearDefaultAccountAndReconnect().setResultCallback(new ResultCallback<Status>() {
+
+                @Override
+                public void onResult(Status status) {
+                    mGoogleApiClient.disconnect();
+
+                    Intent intent = new Intent(MyDriveActivity.this, LoginActivity.class);
+                    startActivity(intent);
+                    finish();
+                }
+            });
+        }
     }
 
     @Override
@@ -241,11 +292,71 @@ public class MyDriveActivity extends BaseDriveActivity
                     success("Image successfully saved.");
                 }
                 break;
+            case REQUEST_CODE_PERMISSION:
+                if (resultCode == Activity.RESULT_OK) {
+                    showMessage("Permission Allowed");
+                }
+            case REQUEST_AUTHORIZATION:
+                if (resultCode == RESULT_OK) {
+                    getResultsFromApi();
+                }
+                break;
         }
+    }
+// ------- Permission Request----
+    private void getResultsFromApi() {
+        if (! isGooglePlayServicesAvailable()) {
+            acquireGooglePlayServices();
+        } else if (! isDeviceOnline()) {
+            showMessage("No network connection available.");
+        } else {
+            showMessage("Permission OK");
+            mProgress.hide();
+            driveRestDao.getFilesListInMyDrive();
+            //new MakeRequestTask(mCredential).execute();
+        }
+    }
+    private boolean isGooglePlayServicesAvailable() {
+        GoogleApiAvailability apiAvailability =
+                GoogleApiAvailability.getInstance();
+        final int connectionStatusCode =
+                apiAvailability.isGooglePlayServicesAvailable(this);
+        return connectionStatusCode == ConnectionResult.SUCCESS;
+    }
+    private void acquireGooglePlayServices() {
+        GoogleApiAvailability apiAvailability =
+                GoogleApiAvailability.getInstance();
+        final int connectionStatusCode =
+                apiAvailability.isGooglePlayServicesAvailable(this);
+        if (apiAvailability.isUserResolvableError(connectionStatusCode)) {
+            showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode);
+        }
+    }
+    private void showGooglePlayServicesAvailabilityErrorDialog(
+            final int connectionStatusCode) {
+        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+        Dialog dialog = apiAvailability.getErrorDialog(
+                MyDriveActivity.this,
+                connectionStatusCode,
+                REQUEST_GOOGLE_PLAY_SERVICES);
+        dialog.show();
+    }
+    private boolean isDeviceOnline() {
+        ConnectivityManager connMgr =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        return (networkInfo != null && networkInfo.isConnected());
     }
 
 
 //    QueryCallbackDao
+
+    @Override
+    public void onResultFilesInMyDrive(List<FileDataIdAndName> listFiles) {
+        mProgress.hide();
+        mResultsAdapter.clear();
+        mResultsAdapter.addAll(listFiles);
+    }
 
     @Override
     public void createResultImageFile(IntentSender intentSender) {
@@ -259,16 +370,16 @@ public class MyDriveActivity extends BaseDriveActivity
     }
 
     @Override
-    public void onResultFilesInMyDrive(List<FileDataIdAndName> listFiles) {
-        mProgress.hide();
-        mResultsAdapter.clear();
-        mResultsAdapter.addAll(listFiles);
-    }
-
-    @Override
     public void onResultGetFile(Bitmap bitmap) {
         mProgress.hide();
         showImage(bitmap);
+    }
+
+    @Override
+    public void errorPermission(Exception mLastError) {
+        startActivityForResult(
+                ((UserRecoverableAuthIOException) mLastError).getIntent(),
+                REQUEST_AUTHORIZATION);
     }
 
     @Override
@@ -284,14 +395,6 @@ public class MyDriveActivity extends BaseDriveActivity
         driveRestDao.getFilesListInMyDrive();
         mProgress.show();
     }
-
-    @Override
-    public void signOut() {
-        Intent intent = new Intent(MyDriveActivity.this, LoginActivity.class);
-        startActivity(intent);
-        finish();
-    }
-
 
 //    work with image
 

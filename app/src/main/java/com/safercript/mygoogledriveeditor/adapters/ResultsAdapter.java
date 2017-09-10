@@ -41,9 +41,9 @@ public class ResultsAdapter extends ArrayAdapter<FileDataIdAndName> {
             convertView = View.inflate(getContext(),
                     R.layout.file_list_item, null);
         }
-        FileDataIdAndName metadata = getItem(position);
+        FileDataIdAndName fileDataIdAndName = getItem(position);
         TextView titleTextView = (TextView) convertView.findViewById(R.id.textView);
-        titleTextView.setText(metadata.getNameFile() + "");
+        titleTextView.setText(fileDataIdAndName.getNameFile() + "");
         titleTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -58,7 +58,7 @@ public class ResultsAdapter extends ArrayAdapter<FileDataIdAndName> {
                 onClickListenerAdapter.onClickDelete(getItem(position));
             }
         });
-        if (metadata.getId().equals("1")){
+        if (fileDataIdAndName.getId().equals("1")){
             imageDelete.setVisibility(View.GONE);
         }
         return convertView;

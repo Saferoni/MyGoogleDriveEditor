@@ -9,15 +9,15 @@ import java.util.List;
 
 public interface QueryCallbackDao {
 
-    void createResultImageFile(IntentSender intentSender);
-
     void onResultFilesInMyDrive(List<FileDataIdAndName> listFiles);
 
+    void createResultImageFile(IntentSender intentSender);
+
     void onResultGetFile(Bitmap bitmap);
+
+    void errorPermission(Exception mLastError);
 
     void failRequest(String messageError);
 
     void success(String message);
-
-    void signOut();
 }

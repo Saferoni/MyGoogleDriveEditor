@@ -24,4 +24,11 @@
     <string name="menu_get_list">getListFilesFromDrive</string>
     <string name="menu_create_file">AddImageToGoogleDrive</string>
     <string name="menu_other">Other</string>
+
+
+    <!--Dialogs-->
+    <string name="dialog_exit_title">Выход</string>
+    <string name="dialog_exit_massage">Вы действительно хотите выйти?</string>
+    <string name="dialog_exit_button_negative">Нет</string>
+    <string name="dialog_exit_button_positive">Да</string>
 </resources>

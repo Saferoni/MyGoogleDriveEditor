@@ -3,6 +3,7 @@ package com.safercript.mygoogledriveeditor;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -32,6 +33,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
     private GoogleApiClient mGoogleApiClient;
 
     // UI references.
+    private ProgressDialog mProgress;
     private EditText mEmailView;
     private EditText mPasswordView;
     private View mProgressView;
@@ -47,6 +49,9 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
         // Set up the login form.
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
         mPasswordView = (EditText) findViewById(R.id.password);
+
+        mProgress = new ProgressDialog(this);
+        mProgress.setMessage("Calling Drive API ...");
 
         Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
@@ -82,6 +87,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
     }
 
     private void signInWithGoogle() {
+        mProgress.show();
         initGoogleApiClient();
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
         this.startActivityForResult(signInIntent, RC_SIGN_IN);
@@ -93,7 +99,6 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
         }
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-//        .requestServerAuthCode(getString(R.string.server_client_id))
                 .requestEmail()
                 .build();
 
@@ -104,6 +109,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
     }
 
     private void authorizationSuccess(){
+        mProgress.hide();
         Intent intent = new Intent(LoginActivity.this, MyDriveActivity.class);
         intent.putExtra("emailString", mLogin);
         startActivity(intent);
