@@ -93,7 +93,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
         }
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        //.requestServerAuthCode(getString(R.string.server_client_id))
+//        .requestServerAuthCode(getString(R.string.server_client_id))
                 .requestEmail()
                 .build();
 

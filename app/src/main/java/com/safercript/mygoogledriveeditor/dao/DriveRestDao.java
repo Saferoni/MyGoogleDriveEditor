@@ -9,6 +9,7 @@ import android.util.Log;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.drive.Drive;
 import com.google.android.gms.drive.DriveApi.DriveContentsResult;
 import com.google.android.gms.drive.MetadataChangeSet;
@@ -40,6 +41,7 @@ public class DriveRestDao {
     private String user;
 
     private static final String[] SCOPES_READ = {DriveScopes.DRIVE_METADATA_READONLY};
+    private static final String[] SCOPES_DRIVE = {DriveScopes.DRIVE_FILE};
 
     private static DriveRestDao sInstance;
 
@@ -120,13 +122,37 @@ public class DriveRestDao {
         new RequestDeleteFileByIDAsyncTask().execute(fileId);
     }
 
+    public void signOut() {
+        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.clearDefaultAccountAndReconnect().setResultCallback(new ResultCallback<Status>() {
+
+                @Override
+                public void onResult(Status status) {
+
+                    mGoogleApiClient.disconnect();
+                    queryCallbackDao.signOut();
+                }
+            });
+        }
+//        Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
+//                new ResultCallback<Status>() {
+//                    @Override
+//                    public void onResult(Status status) {
+//                        if (status.isSuccess()){
+//                            queryCallbackDao.signOut();
+//                        }
+//                    }
+//                });
+    }
+
+
 
     private class MakeListFilesMyDriveRequestTask extends AsyncTask<Void, Void, List<FileDataIdAndName>> {
         private com.google.api.services.drive.Drive mService = null;
         private Exception mLastError = null;
 
         MakeListFilesMyDriveRequestTask() {
-            mService = initService(SCOPES_READ);
+            mService = initService(SCOPES_DRIVE);
         }
 
         @Override
@@ -173,9 +199,8 @@ public class DriveRestDao {
         @Override
         protected void onPostExecute(List<FileDataIdAndName> output) {
             if (output == null || output.size() == 0) {
-                queryCallbackDao.failRequest("Problem while retrieving results" + mLastError);
+                queryCallbackDao.failRequest("Problem while retrieving results " + mLastError);
             } else {
-                output.add(0, new FileDataIdAndName("Null","Data retrieved using the Drive API:"));
                 queryCallbackDao.onResultFilesInMyDrive(output);
             }
         }
@@ -186,7 +211,7 @@ public class DriveRestDao {
         private Exception mLastError = null;
 
         RequestDeleteFileByIDAsyncTask(){
-            mService = initService(SCOPES_READ);
+            mService = initService(SCOPES_DRIVE);
         }
 
         @Override
@@ -217,7 +242,7 @@ public class DriveRestDao {
         Bitmap bitmap;
 
         RequestGetFileByIDAsyncTask(){
-            mService = initService(SCOPES_READ);
+            mService = initService(SCOPES_DRIVE);
         }
 
         @Override

@@ -35,7 +35,8 @@
         <activity
             android:name=".activity.MyDriveActivity"
             android:label="@string/title_activity_my_drive"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/AppTheme.NoActionBar"
+            android:screenOrientation="portrait">
         </activity>
 
         <!--File Provider to targetSdkVersion is 24 or higher -->

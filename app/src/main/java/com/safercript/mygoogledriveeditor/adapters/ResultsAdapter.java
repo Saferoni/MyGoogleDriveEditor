@@ -58,7 +58,9 @@ public class ResultsAdapter extends ArrayAdapter<FileDataIdAndName> {
                 onClickListenerAdapter.onClickDelete(getItem(position));
             }
         });
-
+        if (metadata.getId().equals("1")){
+            imageDelete.setVisibility(View.GONE);
+        }
         return convertView;
     }
     // add onClickListener

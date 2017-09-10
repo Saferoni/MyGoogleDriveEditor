@@ -39,6 +39,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.safercript.mygoogledriveeditor.LoginActivity;
 import com.safercript.mygoogledriveeditor.R;
 import com.safercript.mygoogledriveeditor.adapters.ResultsAdapter;
 import com.safercript.mygoogledriveeditor.callbacks.QueryCallbackDao;
@@ -182,7 +183,7 @@ public class MyDriveActivity extends BaseDriveActivity
         } else if (id == R.id.nav_share) {
             showMessage("Кнопка пока не назначина");
         } else if (id == R.id.nav_send) {
-            showMessage("Кнопка пока не назначина");
+            driveRestDao.signOut();
         }
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
@@ -273,6 +274,7 @@ public class MyDriveActivity extends BaseDriveActivity
     @Override
     public void failRequest(String messageError) {
         mProgress.hide();
+        mResultsAdapter.clear();
         showMessage(messageError);
     }
 
@@ -281,6 +283,13 @@ public class MyDriveActivity extends BaseDriveActivity
         showMessage(message);
         driveRestDao.getFilesListInMyDrive();
         mProgress.show();
+    }
+
+    @Override
+    public void signOut() {
+        Intent intent = new Intent(MyDriveActivity.this, LoginActivity.class);
+        startActivity(intent);
+        finish();
     }
 
 

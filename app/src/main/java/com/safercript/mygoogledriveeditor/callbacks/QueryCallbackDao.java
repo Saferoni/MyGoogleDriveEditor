@@ -18,4 +18,6 @@ public interface QueryCallbackDao {
     void failRequest(String messageError);
 
     void success(String message);
+
+    void signOut();
 }
